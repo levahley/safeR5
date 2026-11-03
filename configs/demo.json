@@ -1,0 +1,9 @@
+{
+  "dataset_id": null,
+  "name": "DNS kesintisi deneyi",
+  "seed": 42,
+  "sources": ["auth", "audit", "dns"],
+  "loss": {"kind": "source", "source": "dns"},
+  "budget_fraction": 0.7,
+  "max_false_positive_rate": 1
+}

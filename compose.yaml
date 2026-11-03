@@ -1,0 +1,23 @@
+services:
+  safer5:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - safer5-data:/app/data
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8765/api/v1/health')"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+volumes:
+  safer5-data:
