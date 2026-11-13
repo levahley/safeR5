@@ -4,7 +4,7 @@
 
 safeR5, kayıt kaybının saldırı tespiti ve kanıt görünürlüğü üzerindeki etkisini ölçen yerel bir siber güvenlik araştırma laboratuvarıdır. Kimlik doğrulama, sistem denetimi ve DNS kayıtlarının tam ve kayıplı görünümlerini **aynı kurallar, model ve karar eşikleriyle** karşılaştırır. Sınırlı kayıt bütçesinde hangi kaynak birleşiminin daha yararlı olduğunu da ayrı bir testte ölçer.
 
-[Deney sonucu](#örnek-deney-dns-kesintisi) · [Hızlı başlangıç](#hızlı-başlangıç) · [Deney yöntemi](#deney-yöntemi) · [Komut satırı](#komut-satırından-çalıştırma) · [Doğrulama](#doğrulama-ve-sınırlar)
+[Deney sonucu](#örnek-deney-dns-kesintisi) · [Ekran görüntüleri](#uygulama-ekran-görüntüleri) · [Hızlı başlangıç](#hızlı-başlangıç) · [Deney yöntemi](#deney-yöntemi) · [Komut satırı](#komut-satırından-çalıştırma) · [Doğrulama](#doğrulama-ve-sınırlar)
 
 ## Araştırma sorusu
 
@@ -33,6 +33,28 @@ Tohum `42` ile üretilen sentetik testte üç kaynak açıkken 2.400 olay incele
 | Normal pencere yanlış pozitif oranı | %5,2 | %6,0 |
 
 Bu çalıştırmada bir gerçek adımın görünür kanıtı kayboldu. Alarm sayısı azalırken yanlış pozitif oranı yükseldi; çünkü işaretlenen normal pencere sayısıyla birlikte gözlenen normal pencere sayısı da değişti. **Bu tablo, tek bir sentetik deneyin sonucudur.** Farklı tohum, veri kümesi veya kayıp ayarları farklı sonuçlar verebilir.
+
+## Uygulama ekran görüntüleri
+
+Görüntüler, tohum `42` ile çalıştırılan sentetik DNS kesintisi deneyinde uygulamanın arayüzünden alındı.
+
+### DNS kesintisi karşılaştırması
+
+![safeR5 karşılaştırma ekranı: 2.400 olaydan 1.592’si korunuyor ve 6 gerçek saldırı adımının 5’i yakalanıyor.](docs/screenshots/dns-kesintisi.jpg)
+
+*Tam ve kayıplı görünüm aynı algılayıcıyla ölçülüyor. Kayıplı görünümde adım yakalama ve kanıt kapsaması %83,3.*
+
+### Kanıt ilişkileri
+
+![Kanıt inceleme ekranındaki olay, makine ve oturum düğümlerini gösteren ilişki grafiği.](docs/screenshots/kanit-grafigi.jpg)
+
+*Grafik, kayıptan sonra görünür kalan olayların ilişkilerini gösteriyor. Olay düğümünden ham kayıt satırına gidilebiliyor.*
+
+### Kaynak optimizasyonu
+
+![Doğrulamada seçilen sistem denetimi ve kimlik doğrulama kaynakları ile bağımsız test sonucu.](docs/screenshots/kaynak-optimizasyonu.jpg)
+
+*%70 veri bütçesinde doğrulamada sistem denetimi ve kimlik doğrulama seçildi. Seçilen kaynaklarla yapılan bağımsız testte saldırı adımı yakalama %83,3.*
 
 ## Hızlı başlangıç
 
