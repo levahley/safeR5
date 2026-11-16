@@ -4,6 +4,19 @@ Güncelleme: 2026-10-17T03:28:21.773561+03:00 (Europe/Istanbul). Bu sayfa öncek
 
 17 Ekim doğrulamasında kullanılan uygulama kaynak özeti: `3dbd7d43a158320420b014b71d6fe123b0ed591556a4482f7690e941a063073c`. Depodaki dosya manifesti: [SOURCE_MANIFEST.json](../SOURCE_MANIFEST.json). Backend özeti: `87299a71d2dcd0ad0022a24082e0f25b4c77d3482c773ef86ec22837cec4a415`. Üretilmiş deneyler kendi kaynak/model/girdi/yapılandırma hash'lerini korur; önceki ölçüm sürümü güncel kodmuş gibi sunulmaz.
 
+## Olay haritası · 16 Kasım 2026
+
+- Python paketi: 61 test geçti. FastAPI TestClient bir Starlette/httpx kullanımdan kaldırma uyarısı verdi. Ruff ve üretilmiş API sözleşmesi kontrolü geçti.
+- Arayüz: 25 Vitest testi, ESLint, TypeScript ve üretim derlemesi geçti. Yerel Chrome üzerinden üç Playwright testi geçti.
+- Tohum 42 ile yeni DNS kesintisi deneyi: tam ve kayıplı kollarda sırasıyla 2.400 ve 1.592 test olayı, 267 ve 177 alarm–delil çifti, 132 ve 101 alarm. DNS sayısı 808'den 0'a düştü. 799 kimlik doğrulama kaydı korundu.
+- Chrome'da aynı olayın iki görünümdeki konumu eşleşti. Kayıplı görünümden DNS ham kaydı 404 döndü. Erişilebilir kimlik doğrulama kaydının özgün satırı açıldı. Tam kayda özgü bir DNS alarmı işaretlendi. Olay araması ve UTC zaman aralığı, klavyeyle ham kanıt açma, sürükleme, yakınlaştırma, sıfırlama ve 390 piksel görünüm denetlendi.
+- Aynı gün yapılan 3B görünüm güncellemesinde 26 Vitest testi, ESLint ve TypeScript içeren üretim derlemesi geçti. Üç Chrome testi yeniden geçti. Kayıpsız deney açıklaması, DNS için 0 / 808 kalan kayıt, 3B ile üstten görünüm arasında geçiş, fareyle döndürme, kaydırma ve sıfırlama doğrulandı.
+- Hacimli WebGL sahnesi güncellemesinden sonra 26 Vitest, ESLint ve üretim derlemesi geçti. Üç Chrome testi geçti. WebGL çizimi, 3B ve üstten görünüm geçişi, düğümlerin aynı kamera konumuna dönmesi ve ham kanıt erişimi doğrulandı. WebGL devre dışıyken 390 piksel genişlikte yedek sahne ve klavyeden ham kayıt açma denendi.
+- Tam ekran güncellemesinde 26 Vitest, ESLint, TypeScript içeren üretim derlemesi ve üç Chrome testi geçti. Tek fare hareketiyle döndürmenin birden fazla kareye yayıldığı, tekerleğin seçili konumu imlecin altında tuttuğu ve sayfanın kaymadığı doğrulandı. Chrome tam ekranda kimlik doğrulamanın ham satırını açtı ve çıkışta kamera yakınlaştırmasını korudu. 390 piksel genişlikte tarayıcı tam ekranı devre dışıyken uygulama içi geniş görünüm açıldı. `Esc` ile çıkış ve düğmeye klavye odağının dönmesi doğrulandı.
+- GitHub yayını öncesinde 59 pytest, 26 Vitest ve üç Chrome testi geçti. 8765 portu kullanımda olduğu için iki başlatma testi atlandı. Ruff, ESLint, API sözleşmesi ve üretim derlemesi kontrolleri geçti.
+
+Ekim ayına ait aşağıdaki doğrulama ve performans kayıtları, kendi kaynak sürümlerini esas alır.
+
 ## Geçen kapılar
 
 | Kontrol | Gerçek sonuç | Tekrar çalıştırma |

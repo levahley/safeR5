@@ -227,6 +227,97 @@ describe('safeR5 çalışma alanı', () => {
     expect(requests.some(request=>request.path==='/api/v1/experiments/e1/evidence?event_id=v1')).toBe(true)
     expect(screen.getByRole('table',{name:'Kanıta dayalı ilişkiler'})).toBeInTheDocument()
   })
+  it('kayıpsız deneyde sayıların neden eşit olduğunu ve kaynakların görünürlüğünü gösterir', async () => {
+    localStorage.setItem('safer5.experiment','e1')
+    serve({'/api/v1/experiments/e1/event-map':{status:'empty',focus:null,nodes:[],edges:[]}})
+    const user=userEvent.setup()
+    render(<App />)
+    await screen.findByText('Kontrollü deney')
+    await user.click(screen.getByRole('button',{name:'Karşılaştırma'}))
+    await user.click(screen.getByRole('button',{name:'Olay haritasını aç'}))
+    const summary=screen.getByRole('region',{name:'Kayıp özeti'})
+    expect(within(summary).getByText(/Bu deney tam kayıtla çalıştırıldı/)).toBeVisible()
+    expect(within(summary).getByRole('columnheader',{name:'Tam kayıt'})).toBeVisible()
+    expect(within(summary).getByRole('columnheader',{name:'Kayıp sonrası'})).toBeVisible()
+    const events=within(summary).getByRole('row',{name:/^Olay /})
+    expect(within(events).getAllByRole('cell').map(cell=>cell.textContent)).toEqual(['200','200','0'])
+    expect(within(summary).getByText('80 / 80 kayıt kaldı')).toBeVisible()
+  })
+  it('olay haritasında kayıp DNS düğümünü yalnız tam görünümde inceler ve görünüm değişince ham kaydı temizler', async () => {
+    localStorage.setItem('safer5.experiment','e1')
+    const alert = {id:'a1',method:'rules',rule_id:'auth-burst',message:'Giriş kuralı',severity:'high',evidence_ids:['v1'],host_id:'host-a',user_id:'u1',event_time:event.event_time,score:null}
+    const dnsAlert = {...alert,id:'a2',rule_id:'dns-pattern',evidence_ids:['v2']}
+    const auth = {id:'event:v1',kind:'event',label:'login',angle:null,lane:0,time:event.event_time,sources:['auth'],risk:'high',event_id:'v1',evidence_ids:['v1'],missing:false,message:null}
+    const dns = {...auth,id:'event:v2',label:'dns_query',event_id:'v2',evidence_ids:['v2'],angle:150,sources:['dns'],missing:true}
+    const map = {status:'ready',focus:{kind:'event',id:'v1'},nodes:[auth],edges:[]}
+    const relation = {source:auth.id,target:dns.id,relation:'time_proximity',evidence_ids:['v1','v2'],distance_seconds:8,missing:true}
+    serve({
+      '/api/v1/experiments/e1':{...experiment,event_count:3,retained_count:2,loss_kind:'source',config:{...config,loss:{...config.loss,kind:'source',source:'dns'}},baseline:{...analysis,event_count:3,source_counts:{auth:1,audit:1,dns:1},alerts:[alert,dnsAlert],metrics:{...metrics,alerts_total:2}},perturbed:{...analysis,event_count:2,source_counts:{auth:1,audit:1,dns:0},alerts:[alert],metrics:{...metrics,alerts_total:1}}},
+      '/api/v1/experiments/e1/event-map':map,
+      '/api/v1/experiments/e1/event-map?view=baseline':{...map,nodes:[auth,dns],edges:[relation]},
+      '/api/v1/experiments/e1/events?offset=0&limit=25&view=baseline':{items:[event],total:1},
+      '/api/v1/experiments/e1/evidence?event_id=v2&view=baseline':{event:{...event,event_id:'v2',source_type:'dns'},raw:'DNS ham satırı',reference:event.raw_ref},
+      '/api/v1/experiments/e1/event-map?source=auth&q=login':map,
+      '/api/v1/experiments/e1/events?offset=0&limit=25&source=auth&q=login':{items:[event],total:1},
+    })
+    render(<App />)
+    const user=userEvent.setup()
+    await screen.findByText('Kontrollü deney')
+    await user.click(screen.getByRole('button',{name:'Karşılaştırma'}))
+    await user.click(screen.getByRole('button',{name:'Olay haritasını aç'}))
+    const graph=await screen.findByRole('group',{name:'Dairesel olay haritası'})
+    const center = within(graph).getByRole('button',{name:/login/})
+    const position = center.getAttribute('transform')
+    const summary=screen.getByRole('region',{name:'Kayıp özeti'})
+    expect(within(summary).getByText(/Kesilen kaynak DNS/)).toBeVisible()
+    expect(within(summary).getByText('0 / 1 kayıt kaldı')).toBeVisible()
+    const deltas = within(summary).getAllByRole('row').slice(1).map(row=>within(row).getAllByRole('cell').at(-1)?.textContent)
+    expect(deltas).toEqual(['1','1','1'])
+    expect(within(graph).queryByRole('button',{name:/dns_query/})).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button',{name:'Tam kayıt'}))
+    const complete = await screen.findByRole('group',{name:'Dairesel olay haritası'})
+    expect(within(complete).getByRole('button',{name:/login/})).toHaveAttribute('transform',position)
+    const ghost = within(complete).getByRole('button',{name:/dns_query.*Bu deneyde görünmüyor/})
+    const originalProjection = ghost.getAttribute('transform')
+    expect(screen.getByRole('button',{name:'3B görünüm'})).toHaveAttribute('aria-pressed','true')
+    complete.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(ghost.getAttribute('transform')).not.toBe(originalProjection)
+    await user.click(screen.getByRole('button',{name:'Görünümü sıfırla'}))
+    expect(ghost).toHaveAttribute('transform',originalProjection)
+    await user.click(screen.getByRole('button',{name:'Üstten görünüm'}))
+    expect(ghost.getAttribute('transform')).not.toBe(originalProjection)
+    await user.click(screen.getByRole('button',{name:'3B görünüm'}))
+    expect(ghost).toHaveAttribute('transform',originalProjection)
+    ghost.focus()
+    await user.keyboard('{Enter}')
+    const details=screen.getByRole('region',{name:'Harita ayrıntıları'})
+    expect(details).toHaveFocus()
+    expect(await within(details).findByText('DNS ham satırı')).toBeInTheDocument()
+    expect(within(details).getByText('Bu deneyde görünmüyor')).toBeInTheDocument()
+    await user.click(within(details).getByRole('button',{name:'Kanıtı kapat'}))
+    expect(ghost).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await within(details).findByText('DNS ham satırı')).toBeInTheDocument()
+    const relations=screen.getByRole('table',{name:'Haritadaki ilişkiler'})
+    await user.click(within(relations).getByRole('button',{name:/Olası ilişki/}))
+    expect(within(details).getByText(/8 sn/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button',{name:'Kayıt kaybı uygulanmış'}))
+    const reduced=await screen.findByRole('group',{name:'Dairesel olay haritası'})
+    expect(within(reduced).queryByRole('button',{name:/dns_query/})).not.toBeInTheDocument()
+    expect(screen.queryByText('DNS ham satırı')).not.toBeInTheDocument()
+    expect(requests.filter(request=>request.path.includes('event_id=v2')).map(request=>request.path)).toEqual([
+      '/api/v1/experiments/e1/evidence?event_id=v2&view=baseline',
+      '/api/v1/experiments/e1/evidence?event_id=v2&view=baseline',
+    ])
+    await user.selectOptions(screen.getByLabelText('Kaynak',{exact:true}),'auth')
+    await user.type(screen.getByLabelText('Olaylarda ara'),'login')
+    await user.click(screen.getByRole('button',{name:'Ara'}))
+    await waitFor(()=>expect(requests.some(request=>request.path.endsWith('/event-map?source=auth&q=login'))).toBe(true))
+    expect(await screen.findByRole('table',{name:'Gözlenen olaylar'})).toBeInTheDocument()
+  })
   it('AIT örnek doğrulamasını gerçek arşiv doğrulaması gibi sunmaz', async () => {
     serve({'/api/v1/settings':{version:'0.1.0',data_directory:'/local/data',limits:{},dependencies:{},ait:{status:'fixture_verified',record_url:'https://example.org',note:'Gerçek arşiv ayrıca doğrulanmalı.'}}})
     render(<App />)

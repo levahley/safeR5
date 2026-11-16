@@ -93,9 +93,17 @@ export type Event = {
   "schema_version": string;
 };
 
+export type EventMap = {
+  "status": "ready" | "missing" | "filtered" | "empty";
+  "focus": MapFocus | null;
+  "nodes": Array<MapNode>;
+  "edges": Array<MapEdge>;
+};
+
 export type EventPage = {
   "items": Array<Event>;
   "total": number;
+  "missing_event_ids": Array<string>;
 };
 
 export type Evidence = {
@@ -179,6 +187,35 @@ export type LossConfig = {
   "source": "auth" | "audit" | "dns" | null;
   "start": string | null;
   "end": string | null;
+};
+
+export type MapEdge = {
+  "source": string;
+  "target": string;
+  "relation": "alarm_evidence" | "observed_on" | "observed_user" | "observed_session" | "recorded_process" | "time_proximity";
+  "evidence_ids": Array<string>;
+  "distance_seconds": number | null;
+  "missing": boolean;
+};
+
+export type MapFocus = {
+  "kind": "event" | "alert";
+  "id": string;
+};
+
+export type MapNode = {
+  "id": string;
+  "kind": "event" | "alert" | "host" | "user" | "session" | "process";
+  "label": string;
+  "angle": number | null;
+  "lane": -1 | 0 | 1;
+  "time": string | null;
+  "sources": Array<"auth" | "audit" | "dns">;
+  "risk": "high" | "medium" | "unflagged";
+  "event_id": string | null;
+  "evidence_ids": Array<string>;
+  "missing": boolean;
+  "message": string | null;
 };
 
 export type Metrics = {

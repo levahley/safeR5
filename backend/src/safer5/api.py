@@ -8,24 +8,36 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Query, Request
+import duckdb
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from . import wire
+from .event_map import build_event_map
 from .jobs import JobManager
 from .reports import report_bytes
 from .schemas import LabConfig, RunConfig, Source
-from .storage import Store
+from .storage import Store, event_selection, experiment_event_scope
 from .util import file_hash, managed_id
 
 
 class ImportRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     content: str = Field(max_length=20 * 1024 * 1024)
+
+
+EvidenceView = Literal["baseline", "perturbed"]
+
+
+def evidence_filters(source: Source | None = None, q: str = Query("", max_length=200),
+                     start: AwareDatetime | None = None, end: AwareDatetime | None = None):
+    if start is not None and end is not None and start >= end:
+        raise HTTPException(422, "Bitiş, başlangıçtan sonra olmalı.")
+    return source, q, start, end
 
 
 def create_app(data_root=None):
@@ -134,19 +146,43 @@ def create_app(data_root=None):
         return store.get("experiments", identifier)
 
     @app.get("/api/v1/experiments/{identifier}/events", response_model=wire.EventPage)
-    def events(identifier: str, offset: int = Query(0, ge=0, le=1000000), limit: int = Query(50, ge=1, le=1000), source: Source | None = None, q: str = Query("", max_length=200)):
-        store.get("experiments", identifier)
-        return store.events(identifier, offset=offset, limit=limit, sources=[source] if source else None, q=q,
-                            path=store.experiment_path(identifier) / "observed.parquet")
+    def events(identifier: str, offset: int = Query(0, ge=0, le=1000000),
+               limit: int = Query(50, ge=1, le=1000), view: EvidenceView = "perturbed",
+               filters=Depends(evidence_filters)):
+        result = store.get("experiments", identifier)
+        source, q, start, end = filters
+        path, sources = experiment_event_scope(store, result, view, source)
+        page = store.events(identifier, offset=offset, limit=limit, sources=sources, q=q, path=path,
+                            start=start, end=end)
+        if view == "baseline" and page["items"]:
+            ids = [event["event_id"] for event in page["items"]]
+            base, params = event_selection(*experiment_event_scope(store, result, "perturbed"))
+            with duckdb.connect(config={"threads": 1, "memory_limit": "128MB"}) as db:
+                kept = {row[0] for row in db.execute(f"SELECT event_id{base} AND event_id = ANY(?)",
+                                                      params + [ids]).fetchall()}
+            page["missing_event_ids"] = [event_id for event_id in ids if event_id not in kept]
+        return page
+
+    @app.get("/api/v1/experiments/{identifier}/event-map", response_model=wire.EventMap)
+    def event_map(identifier: str, view: EvidenceView = "perturbed",
+                  focus_kind: Literal["event", "alert"] | None = None, focus_id: str | None = None,
+                  filters=Depends(evidence_filters)):
+        if (focus_kind is None) != (focus_id is None):
+            raise HTTPException(422, "Merkez türünü ve kimliğini birlikte belirtin.")
+        if focus_id is not None:
+            managed_id(focus_id)
+        result = store.get("experiments", identifier)
+        focus = wire.MapFocus(kind=focus_kind, id=focus_id) if focus_id is not None else None
+        return build_event_map(store, result, view, focus, *filters)
 
     @app.get("/api/v1/experiments/{identifier}/evidence", response_model=wire.Evidence)
-    def evidence(identifier: str, event_id: str):
+    def evidence(identifier: str, event_id: str, view: EvidenceView = "perturbed"):
         managed_id(event_id)
         result = store.get("experiments", identifier)
-        # Query observed Parquet only, then fetch original source line. Hidden test records are not exposed here.
-        import duckdb
+        # Resolve membership in the explicitly selected view before opening the original file.
+        base, params = event_selection(*experiment_event_scope(store, result, view))
         with duckdb.connect(config={"threads": 1, "memory_limit": "128MB"}) as db:
-            row = db.execute("SELECT record FROM read_parquet(?) WHERE event_id=?", [str(store.experiment_path(identifier) / "observed.parquet"), event_id]).fetchone()
+            row = db.execute(f"SELECT record{base} AND event_id = ?", params + [event_id]).fetchone()
         if row is None:
             raise FileNotFoundError()
         event = json.loads(row[0])

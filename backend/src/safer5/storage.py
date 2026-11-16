@@ -16,6 +16,31 @@ from .schemas import Event, RawRef, SOURCES
 from .util import atomic_json, canonical, digest, file_hash, managed_id, now
 
 PARQUET_SCHEMA = pa.schema([(x, pa.string()) for x in ("event_id", "event_time", "source_type", "host_id", "user_id", "record")])
+EVENT_TIME = "CAST(event_time AS TIMESTAMPTZ)"
+
+
+def event_selection(path, sources=None, q="", start=None, end=None):
+    clauses, params = [], [str(path)]
+    if sources is not None:
+        clauses.append("source_type = ANY(?)")
+        params.append(sources)
+    if q:
+        clauses.append("contains(lower(record), lower(?))")
+        params.append(q)
+    for operator, boundary in ((">=", start), ("<", end)):
+        if boundary is not None:
+            clauses.append(f"{EVENT_TIME} {operator} ?")
+            params.append(boundary)
+    return " FROM read_parquet(?) WHERE " + (" AND ".join(clauses) or "TRUE"), params
+
+
+def experiment_event_scope(store, result, view, source=None):
+    sources = [source] if source else None
+    if view == "baseline":
+        allowed = result["config"]["sources"]
+        sources = [item for item in allowed if not source or item == source]
+        return store.dataset_path(result["dataset_id"]) / "test/events.parquet", sources
+    return store.experiment_path(result["id"]) / "observed.parquet", sources
 
 
 def write_parquet(path, events):
@@ -175,23 +200,16 @@ class Store:
                 for row in rows:
                     yield Event.model_validate_json(row[0])
 
-    def events(self, identifier, split="test", sources=None, offset=0, limit=50, q="", path=None):
+    def events(self, identifier, split="test", sources=None, offset=0, limit=50, q="", path=None, start=None, end=None):
         if not 0 <= offset or not 1 <= limit <= 1000:
             raise ValueError("Geçersiz sayfalama.")
         path = Path(path) if path else self.dataset_path(identifier) / split / "events.parquet"
-        clauses, params = [], [str(path)]
-        if sources is not None:
-            if not sources:
-                return {"items": [], "total": 0}
-            clauses.append("source_type IN (" + ",".join("?" for _ in sources) + ")")
-            params.extend(sources)
-        if q:
-            clauses.append("contains(lower(record),lower(?))")
-            params.append(q)
-        base = " FROM read_parquet(?)" + (" WHERE " + " AND ".join(clauses) if clauses else "")
+        base, params = event_selection(path, sources, q, start, end)
         with duckdb.connect(config={"threads": 1, "memory_limit": "256MB"}) as db:
             total = db.execute("SELECT count(*)" + base, params).fetchone()[0]
-            items = db.execute("SELECT record" + base + " ORDER BY event_time,event_id LIMIT ? OFFSET ?", params + [limit, offset]).fetchall()
+            items = db.execute(
+                f"SELECT record{base} ORDER BY {EVENT_TIME}, event_id LIMIT ? OFFSET ?", params + [limit, offset],
+            ).fetchall()
         return {"items": [json.loads(x[0]) for x in items], "total": total}
 
     def put(self, table, value):

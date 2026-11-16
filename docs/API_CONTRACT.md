@@ -14,8 +14,9 @@ All routes `/api/v1`. JSON. Same-origin browser UI at `http://127.0.0.1:8765`. E
 - `GET /jobs` → Job[]; `GET /jobs/{id}` → Job; `POST /jobs/{id}/cancel` → Job
 - `GET /experiments` → ExperimentSummary[]
 - `GET /experiments/{id}` → Experiment
-- `GET /experiments/{id}/evidence?event_id=...` → `{event:Event,raw:string,reference:{file_id:string,line:number,sha256:string}}` (retained events only)
-- `GET /experiments/{id}/events?offset=0&limit=50&source=auth&q=...` → `{items:Event[],total:number}` (observed/retained test events only, optional source/query)
+- `GET /experiments/{id}/evidence?event_id=...` → `{event:Event,raw:string,reference:{file_id:string,line:number,sha256:string}}`. The default scope is the retained test view. Explicit `view=baseline` reads the same experiment's complete test input from its configured sources.
+- `GET /experiments/{id}/events?offset=0&limit=50&source=auth&q=...` → `{items:Event[],total:number,missing_event_ids:string[]}`. Optional source, text, and UTC `start` (inclusive) and `end` (exclusive) filters. Same `view` as evidence. The full view identifies page records absent from the retained view.
+- `GET /experiments/{id}/event-map` → `EventMap`. Supports the event filters and view above. Set both `focus_kind=event|alert` and `focus_id` to select a center or omit both for an automatic center. A known center outside the current view or filter returns `missing` or `filtered` with empty nodes and edges.
 - `GET /experiments/{id}/report?format=json|csv|markdown|html` → downloadable file
 - `GET /models` → summaries of locally trained models
 - `GET /settings` → `{version,data_directory,limits,dependencies,ait:{status,record_url,note}}`
@@ -44,6 +45,8 @@ Metrics `{attack_step_recall:number|null,false_positive_rate:number|null,evidenc
 Metrics additionally has `false_positive_windows`, `normal_windows`, `evidence_flag_rate`. `false_positive_rate` is flagged normal source/host/user/300-second windows / observed known-normal windows. Original attack windows remain excluded even if attack rows are hidden. `false_positives` / `normal_events` are separately the bounded flagged normal evidence events / observed labeled normal events; their ratio is `evidence_flag_rate`. A zero denominator is null, never a perfect false-alarm claim.
 
 Node `{id,label,kind:"event"|"host"|"user"|"session"}`; Edge `{source,target,relation,evidence_ids:string[],uncertainty:string}`.
+
+EventMap returns the focus, a bounded neighborhood of up to 24 records and their entities, and evidence-backed edges. The layout uses consistent angles and lanes across both views. Event nodes carry the record time and source. Entity nodes carry their latest supporting event time. Processes use machine, PID, and start time when available. A PID without a start time is scoped to its individual record. The map includes available alarm witnesses and context up to 120 seconds from the reference event. Edges labeled `time_proximity` support a possible relationship only. Baseline items absent from the retained neighborhood are marked `missing`; retained results contain only observed events and their supporting links. The UI compares all experiment events, alarm IDs, and unique alarm–evidence pairs, independently of the displayed neighborhood.
 
 Optimization `{budget_bytes:number,budget_fraction:number,cost_unit:string,validation_dataset_hash:string,recommended_sources:string[],candidates:Candidate[],comparisons:Comparison[],independent_test:Metrics,actual_test_cost_bytes:number,estimated_cost_bytes:number,policy:string}`. Candidate `{sources:string[],cost_bytes:number,recall:number|null,false_positive_rate:number|null,feasible:boolean}`. Comparison `{method,sources:string[],validation_recall:number|null,test_recall:number|null,cost_bytes:number,within_budget:boolean}`. All 8 subsets searched on validation. Random comparisons repeat seeds.
 

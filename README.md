@@ -44,6 +44,12 @@ Görüntüler, tohum `42` ile çalıştırılan sentetik DNS kesintisi deneyinde
 
 *Tam ve kayıplı görünüm aynı algılayıcıyla ölçülüyor. Kayıplı görünümde adım yakalama ve kanıt kapsaması %83,3.*
 
+### Tam ekranda 3B olay haritası
+
+![DNS kesintisi deneyinin 3B olay haritası tam ekranda. Solda kimlik doğrulama olayının bağlantıları, sağda seçilen olayın ham kayıt satırı görünüyor.](docs/screenshots/3b-olay-haritasi-tam-ekran.png)
+
+*DNS kayıtları kaybolduğunda görünen bir kimlik doğrulama olayı ve ham kaydı. Haritayı sürükleyerek döndürebilir, fare tekerleğiyle imlecin altındaki noktaya yakınlaşabilirsiniz.*
+
 ### Kanıt ilişkileri
 
 ![Kanıt inceleme ekranındaki olay, makine ve oturum düğümlerini gösteren ilişki grafiği.](docs/screenshots/kanit-grafigi.jpg)
@@ -69,14 +75,14 @@ sh scripts/setup.sh
 sh scripts/start.sh
 ```
 
-Özel depoyu klonlamak için GitHub hesabınızın okuma erişimi olmalıdır. Kurulum Python ortamını hazırlar ve arayüzü derler. Uygulama [127.0.0.1:8765](http://127.0.0.1:8765) adresinde açılır; çalışma sırasında dış API veya bulut hesabı gerektirmez. Deney verileri varsayılan olarak `data/` klasöründe tutulur.
+Kurulum Python ortamını hazırlar ve arayüzü derler. Uygulama [127.0.0.1:8765](http://127.0.0.1:8765) adresinde açılır. Çalışma sırasında dış API veya bulut hesabı gerektirmez. Deney verileri varsayılan olarak `data/` klasöründe tutulur.
 
 ### Arayüzde ilk karşılaştırma
 
 1. **Genel bakış → Demo deneyi başlat.** Bu ilk deney kayıpsızdır. İş tamamlanınca **Sonucu aç** ile karşılaştırmayı inceleyin.
 2. **Deney tasarımı** ekranında aynı veri kümesini seçin ve üç kaynağı açık bırakın. **Kaynak kesintisi → DNS** seçip **Deneyi çalıştır** düğmesine basın.
 3. **Karşılaştırma** ekranında olay sayılarını, yakalanan adımları ve normal pencere yanlış pozitif oranını okuyun. **Yöntemlerin ayrı sonuçları** tablosunda kuralları ve Isolation Forest’ı karşılaştırın.
-4. **Kanıt inceleme** ekranında bir alarmın olaylarına ve özgün kayıt satırına dönün. Zaman çizgisi ve ilişki grafiği, gözlenen kayıtlar arasındaki bağı incelemek için kullanılabilir.
+4. **Kanıt inceleme → Olay haritası** ekranında ilgili düğümleri ve ham kayıt satırlarını açın. **Tam ekran** düğmesi 3B haritayı kanıt paneliyle birlikte büyütür.
 5. **Kaynak optimizasyonu** ekranında bütçe, adaylar ve bağımsız test sonucunu kontrol edin. **Raporlar ve ayarlar** ekranından sonucu JSON, CSV, Markdown veya HTML olarak indirin.
 
 Sunum için adım adım akış: [Beş dakikalık demo](docs/DEMO.md).

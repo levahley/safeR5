@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .schemas import Event, RunConfig, Source, RawRef
 
@@ -171,6 +171,44 @@ class Evidence(BaseModel):
 class EventPage(BaseModel):
     items: list[Event]
     total: int
+    missing_event_ids: list[str] = Field(default_factory=list)
+
+
+class MapFocus(BaseModel):
+    kind: Literal["event", "alert"]
+    id: str
+
+
+class MapNode(BaseModel):
+    id: str
+    kind: Literal["event", "alert", "host", "user", "session", "process"]
+    label: str
+    angle: float | None
+    lane: Literal[-1, 0, 1] = 0
+    time: str | None
+    sources: list[Source]
+    risk: Literal["high", "medium", "unflagged"]
+    event_id: str | None = None
+    evidence_ids: list[str]
+    missing: bool = False
+    message: str | None = None
+
+
+class MapEdge(BaseModel):
+    source: str
+    target: str
+    relation: Literal["alarm_evidence", "observed_on", "observed_user", "observed_session", "recorded_process",
+                      "time_proximity"]
+    evidence_ids: list[str]
+    distance_seconds: float | None = None
+    missing: bool = False
+
+
+class EventMap(BaseModel):
+    status: Literal["ready", "missing", "filtered", "empty"]
+    focus: MapFocus | None
+    nodes: list[MapNode]
+    edges: list[MapEdge]
 
 
 class AitSetting(BaseModel):

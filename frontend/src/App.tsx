@@ -23,8 +23,10 @@ function savedExperiment() {try{return localStorage.getItem('safer5.experiment')
 
 export default function App() {
   const [view,setView] = useState<View>('overview')
-  const navigate=(next:View)=>{
+  const [startInMap,setStartInMap] = useState(false)
+  const navigate=(next:View, map=false)=>{
     setView(next)
+    setStartInMap(map)
     ;(document.scrollingElement??document.documentElement).scrollTo({top:0,left:0,behavior:'instant'})
     queueMicrotask(()=>document.getElementById('main')?.focus({preventScroll:true}))
   }
@@ -115,8 +117,8 @@ export default function App() {
         </>}
         {view==='lab'&&<Laboratory datasets={overview?.datasets??[]} busy={busy} generate={generate} refresh={loadOverview}/>}
         {view==='experiment'&&<ExperimentForm datasets={overview?.datasets??[]} busy={busy} run={run}/>}
-        {view==='comparison'&&!resultLoading&&(experiment?<Comparison experiment={experiment} inspect={()=>navigate('evidence')}/>:needExperiment)}
-        {view==='evidence'&&!resultLoading&&(experiment?<EvidenceWorkspace key={experiment.id} experiment={experiment}/>:<Empty title="Gözlenen olaylardan kanıta">Kanıtları incelemek için bir deney seçin.</Empty>)}
+        {view==='comparison'&&!resultLoading&&(experiment?<Comparison experiment={experiment} inspect={()=>navigate('evidence')} inspectMap={()=>navigate('evidence',true)}/>:needExperiment)}
+        {view==='evidence'&&!resultLoading&&(experiment?<EvidenceWorkspace key={experiment.id} experiment={experiment} startInMap={startInMap}/>:<Empty title="Gözlenen olaylardan kanıta">Kanıtları incelemek için bir deney seçin.</Empty>)}
         {view==='optimization'&&!resultLoading&&(experiment?<OptimizationWorkspace experiment={experiment} busy={busy} run={run}/>:needExperiment)}
         {view==='reports'&&!resultLoading&&<Reports experiment={experiment}/>}
         <footer className="page-bottom"><span>safeR5 · Yerel log kaybı araştırma laboratuvarı</span><span>Kanıta dayalı analiz. Tekrarlanabilir sonuç.</span></footer>
